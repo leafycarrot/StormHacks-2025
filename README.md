@@ -1,6 +1,36 @@
-# StormhacksAngular
+# StormHacks 2025 - Angular Project
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.4.
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js (version 18 or higher)
+- npm (comes with Node.js)
+- Angular CLI (`npm install -g @angular/cli`)
+
+### Setup Instructions
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/leafycarrot/StormHacks-2025.git
+   cd StormHacks-2025
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+   This will create the `node_modules/` folder with all required packages.
+
+3. **Start the development server:**
+   ```bash
+   ng serve
+   ```
+   This will automatically create the `.angular/` cache folder and start the server.
+
+4. **Open your browser:**
+   Navigate to `http://localhost:4200/` to view the application.
 
 ## Development server
 
