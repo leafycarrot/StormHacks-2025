@@ -3,25 +3,27 @@
   <!-- Game Header -->
   <div class="game-header">
     <div class="streak-counter">Streak: {{ streak() }}</div>
-    <button class="admin-button" (click)="toggleAdmin()">Admin</button>
   </div>
 
   <!-- Main Game Area -->
   <div class="game-area">
-    <!-- Clouds -->
-    <div class="cloud cloud-1" [style.top.px]="cloud1Y()"></div>
-    <div class="cloud cloud-2" [style.top.px]="cloud2Y()"></div>
     
     <!-- Road -->
     <div class="road"></div>
     
     <!-- Player Character -->
     <div class="player-character" [style.left.px]="playerX()">
+      <div class="character-body">
+        <img src="/characters/main_character.png" 
+             alt="Main Character" 
+             class="character-image"
+             onload="console.log('Character image loaded successfully')"
+             onerror="console.error('Failed to load main_character.png'); this.style.border='2px solid red';">
+      </div>
       <div class="hp-bar">
         <div class="hp-fill" [style.width.%]="(hp() / maxHp()) * 100"></div>
         <span class="hp-text">{{ hp() }}/{{ maxHp() }}</span>
       </div>
-      <div class="character-body">😊</div>
     </div>
     
     <!-- Enemy Assignment -->
@@ -34,54 +36,15 @@
              onload="console.log('Monster GIF loaded successfully')"
              onerror="console.error('Failed to load monster_1.gif'); this.style.border='2px solid red';">
       </div>
-    </div>
-  </div>
+      </div>
+</div>
 
   <!-- Display Text Area -->
   <div class="display-text">
     <p>{{ displayMessage() }}</p>
-  </div>
-</div>
-
-<!-- Admin UI Modal -->
-<div class="admin-modal" [class.show]="showAdmin()">
-  <div class="admin-content">
-    <div class="admin-header">
-      <h2>Admin UI</h2>
-      <button class="close-btn" (click)="toggleAdmin()">×</button>
-    </div>
-    
-    <div class="password-section" *ngIf="!adminAuthenticated()">
-      <input type="password" placeholder="Enter password" [(ngModel)]="adminPassword" (keyup.enter)="authenticateAdmin()">
-      <button (click)="authenticateAdmin()">Login</button>
-    </div>
-    
-    <div class="admin-table" *ngIf="adminAuthenticated()">
-      <table>
-        <thead>
-          <tr>
-            <th>Username</th>
-            <th>Assignment / test</th>
-            <th>%</th>
-            <th>Incomplete</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let student of students()">
-            <td>{{ student.username }}</td>
-            <td *ngFor="let assignment of student.assignments">
-              <div class="assignment-row">
-                <span>{{ assignment.name }}</span>
-                <input type="number" [(ngModel)]="assignment.percentage" placeholder="%">
-                <input type="checkbox" [(ngModel)]="assignment.incomplete">
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
       </div>
 </div>
+
 
 <style>
 /* Global Reset */
@@ -96,7 +59,8 @@ html, body {
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  overflow-x: hidden; /* ensure no horizontal scroll */
+  overflow-y: auto;
   background: #000;
 }
 
@@ -110,13 +74,11 @@ app-root {
 
 /* Game Container */
 .game-container {
-  width: 100vw;
-  height: 100vh;
-  background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 100%);
-  position: fixed;
-  top: 0;
-  left: 0;
-  overflow: hidden;
+  width: 100%;
+  min-height: 160vh; /* extend page to allow scroll below background */
+  background: transparent;
+  position: relative;
+  overflow: visible;
   font-family: 'Arial', sans-serif;
   box-sizing: border-box;
   margin: 0;
@@ -127,12 +89,12 @@ app-root {
 .game-container::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  top: -8px;           /* bleed over edges to hide 1px gaps */
+  left: -8px;
+  width: calc(100% + 16px);
+  height: calc(100vh + 2px);
   background: url('/backgrounds/stormhack_background.png') no-repeat center center;
-  background-size: cover;
+  background-size: cover; /* keep background covering only the game viewport */
   z-index: -1;
 }
 
@@ -158,73 +120,15 @@ app-root {
   box-shadow: 0 2px 10px rgba(0,0,0,0.2);
 }
 
-.admin-button {
-  background: #ff6b6b;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-  transition: all 0.3s ease;
-}
-
-.admin-button:hover {
-  background: #ff5252;
-  transform: translateY(-2px);
-}
 
 /* Game Area */
 .game-area {
   position: relative;
   width: 100%;
   height: 70vh;
-  background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 70%, #8B4513 100%);
+  background: transparent;
 }
 
-/* Clouds */
-.cloud {
-  position: absolute;
-  width: 80px;
-  height: 40px;
-  background: white;
-  border-radius: 50px;
-  opacity: 0.8;
-  animation: float 3s ease-in-out infinite;
-}
-
-.cloud-1 {
-  left: 10%;
-  animation-delay: 0s;
-}
-
-.cloud-2 {
-  right: 10%;
-  animation-delay: 1.5s;
-}
-
-.cloud::before {
-  content: '';
-  position: absolute;
-  width: 50px;
-  height: 50px;
-  background: white;
-  border-radius: 50px;
-  top: -25px;
-  left: 10px;
-}
-
-.cloud::after {
-  content: '';
-  position: absolute;
-  width: 60px;
-  height: 40px;
-  background: white;
-  border-radius: 50px;
-  top: -15px;
-  right: 10px;
-}
 
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
@@ -242,21 +146,7 @@ app-root {
   box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
-.road::after {
-  content: '';
-  position: absolute;
-  top: -10px;
-  left: 0;
-  right: 0;
-  height: 20px;
-  background: repeating-linear-gradient(
-      90deg,
-    #228B22 0px,
-    #228B22 20px,
-    #32CD32 20px,
-    #32CD32 40px
-  );
-}
+.road::after { content: none; }
 
 /* Player Character */
 .player-character {
@@ -267,12 +157,14 @@ app-root {
 }
 
 .hp-bar {
-  position: relative;
-  width: 60px;
-  height: 8px;
+  position: absolute;
+  bottom: 100%; /* place directly above character image */
+  left: 50%;
+  transform: translate(-50%, -6px);
+  width: 120px;
+  height: 12px;
   background: #333;
   border-radius: 4px;
-  margin-bottom: 5px;
   overflow: hidden;
 }
 
@@ -284,9 +176,9 @@ app-root {
 
 .hp-text {
   position: absolute;
-  top: -20px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   font-size: 10px;
   color: #333;
   font-weight: bold;
@@ -295,6 +187,13 @@ app-root {
 .character-body {
   font-size: 30px;
   text-align: center;
+}
+
+.character-image {
+  width: 400px;
+  height: 400px;
+  object-fit: contain;
+  image-rendering: pixelated;
 }
 
 /* Enemy Assignment */
@@ -308,7 +207,7 @@ app-root {
 
 .assignment-date {
   background: rgba(255, 255, 255, 0.9);
-  padding: 5px 10px;
+  padding: 5px 8px;
   border-radius: 10px;
   font-size: 12px;
   font-weight: bold;
@@ -316,6 +215,8 @@ app-root {
   margin-bottom: 5px;
   text-align: center;
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  width: 60px;
+  display: inline-block;
 }
 
 .assignment-ghost {
@@ -341,137 +242,19 @@ app-root {
 
 /* Display Text Area */
 .display-text {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 30vh;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-    display: flex;
-    align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  text-align: center;
-  padding: 20px;
-}
-
-/* Admin Modal */
-.admin-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-}
-
-.admin-modal.show {
-  opacity: 1;
-  visibility: visible;
-}
-
-.admin-content {
-  background: white;
-  border-radius: 10px;
-  padding: 20px;
-  max-width: 80%;
-  max-height: 80%;
-  overflow-y: auto;
   position: relative;
-}
-
-.admin-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #eee;
-  padding-bottom: 10px;
-}
-
-.close-btn {
-  background: #ff6b6b;
+  margin-top: 100vh; /* push text below the background image area */
+  min-height: 30vh;
+  background: rgba(0, 0, 0, 0.85);
   color: white;
-  border: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 18px;
     display: flex;
     align-items: center;
   justify-content: center;
-}
-
-.password-section {
+  font-size: 18px;
   text-align: center;
-  padding: 20px;
+  padding: 24px;
 }
 
-.password-section input {
-  padding: 10px;
-  margin: 10px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  font-size: 16px;
-}
 
-.password-section button {
-  padding: 10px 20px;
-  background: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 16px;
-}
 
-.admin-table {
-      width: 100%;
-  overflow-x: auto;
-}
-
-.admin-table table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
-
-.admin-table th,
-.admin-table td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
-}
-
-.admin-table th {
-  background-color: #f2f2f2;
-  font-weight: bold;
-}
-
-.assignment-row {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.assignment-row input[type="number"] {
-  width: 60px;
-  padding: 2px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-}
-
-.assignment-row input[type="checkbox"] {
-  width: 15px;
-  height: 15px;
-}
 </style>

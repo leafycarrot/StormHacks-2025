@@ -8,13 +8,6 @@ interface Assignment {
   date: string;
   dueDate: Date;
   completed: boolean;
-  percentage?: number;
-  incomplete?: boolean;
-}
-
-interface Student {
-  username: string;
-  assignments: Assignment[];
 }
 
 @Component({
@@ -28,16 +21,10 @@ export class App implements OnInit, OnDestroy {
   protected readonly hp = signal(100);
   protected readonly maxHp = signal(100);
   protected readonly streak = signal(0);
-  protected readonly playerX = signal(50);
-  protected readonly enemyX = signal(200);
-  protected readonly cloud1Y = signal(50);
-  protected readonly cloud2Y = signal(80);
+  protected readonly playerX = signal(-70);
+  protected readonly enemyX = signal(100);
   protected readonly displayMessage = signal('Welcome to the Student Productivity Game! Complete assignments before they reach you!');
   
-  // Admin state
-  protected readonly showAdmin = signal(false);
-  protected readonly adminAuthenticated = signal(false);
-  protected adminPassword = '';
   
   // Game data
   protected readonly currentAssignment = signal<Assignment>({
@@ -47,22 +34,6 @@ export class App implements OnInit, OnDestroy {
     completed: false
   });
   
-  protected readonly students = signal<Student[]>([
-    {
-      username: 'Student 1',
-      assignments: [
-        { name: 'A 1', date: 'Oct 3rd', dueDate: new Date(), completed: false, percentage: 0, incomplete: true },
-        { name: 'Math Test 3', date: 'Oct 5th', dueDate: new Date(), completed: true, percentage: 97, incomplete: false }
-      ]
-    },
-    {
-      username: 'Student 2',
-      assignments: [
-        { name: 'A 1', date: 'Oct 3rd', dueDate: new Date(), completed: true, percentage: 90, incomplete: false },
-        { name: 'Math Test 3', date: 'Oct 5th', dueDate: new Date(), completed: false, percentage: 0, incomplete: true }
-      ]
-    }
-  ]);
 
   private gameInterval?: number;
   private cloudInterval?: number;
@@ -102,11 +73,6 @@ export class App implements OnInit, OnDestroy {
       }
     }, 1000);
 
-    // Animate clouds
-    this.cloudInterval = setInterval(() => {
-      this.cloud1Y.set(50 + Math.sin(Date.now() / 2000) * 20);
-      this.cloud2Y.set(80 + Math.sin(Date.now() / 2500) * 15);
-    }, 100);
   }
 
   private takeDamage(amount: number) {
@@ -160,21 +126,4 @@ export class App implements OnInit, OnDestroy {
     this.createNewAssignment();
   }
 
-  protected toggleAdmin() {
-    this.showAdmin.update(show => !show);
-    if (!this.showAdmin()) {
-      this.adminAuthenticated.set(false);
-      this.adminPassword = '';
-    }
-  }
-
-  protected authenticateAdmin() {
-    if (this.adminPassword === 'admin123') {
-      this.adminAuthenticated.set(true);
-      this.displayMessage.set('Admin access granted! You can now manage student progress.');
-    } else {
-      this.displayMessage.set('Invalid password. Try again.');
-      this.adminPassword = '';
-    }
-  }
 }
