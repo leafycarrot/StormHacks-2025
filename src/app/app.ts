@@ -18,13 +18,13 @@ interface Assignment {
 })
 export class App implements OnInit, OnDestroy {
   // Game state
-  protected readonly hp = signal(100);
-  protected readonly maxHp = signal(100);
+  protected readonly hp = signal(3);
+  protected readonly maxHp = signal(3);
   protected readonly streak = signal(0);
   protected readonly playerX = signal(-70);
   protected readonly enemyX = signal(100);
   protected readonly displayMessage = signal('Welcome to the Student Productivity Game! Complete assignments before they reach you!');
-  
+  protected readonly enemyImage = signal<string>('/enemies/blue_slime.png');
   
   // Game data
   protected readonly currentAssignment = signal<Assignment>({
@@ -39,6 +39,7 @@ export class App implements OnInit, OnDestroy {
   private cloudInterval?: number;
 
   ngOnInit() {
+    this.enemyImage.set(this.pickRandomEnemy());
     this.startGame();
   }
 
@@ -54,12 +55,15 @@ export class App implements OnInit, OnDestroy {
   private startGame() {
     // Move enemy closer to player over time
     this.gameInterval = setInterval(() => {
+      const COLLISION_DISTANCE_PX = 80; // tweak to match sprite sizes
       const currentX = this.enemyX();
-      const newX = Math.max(currentX - 2, this.playerX() + 30); // Stop when close to player
+      const targetX = this.playerX() + COLLISION_DISTANCE_PX;
+      const step = 2;
+      const newX = currentX > targetX ? currentX - step : targetX;
       this.enemyX.set(newX);
-      
+
       // Check if enemy hit player
-      if (newX <= this.playerX() + 30 && !this.currentAssignment().completed) {
+      if (newX <= targetX && !this.currentAssignment().completed) {
         this.takeDamage(1);
         this.displayMessage.set('Assignment hit! You lost 1 HP. Complete assignments to avoid damage!');
       }
@@ -116,6 +120,7 @@ export class App implements OnInit, OnDestroy {
     });
     
     this.enemyX.set(200);
+    this.enemyImage.set(this.pickRandomEnemy());
     this.displayMessage.set(`New assignment: ${randomAssignment}. Complete it before the due date!`);
   }
 
@@ -124,6 +129,28 @@ export class App implements OnInit, OnDestroy {
     this.streak.set(0);
     this.enemyX.set(200);
     this.createNewAssignment();
+  }
+
+  // Event handlers referenced from the template
+  protected onEnemyLoad(): void {
+    // Intentionally empty; reserved for future logging/analytics
+  }
+
+  protected onEnemyError(): void {
+    // Intentionally empty; could set a fallback image here if needed
+  }
+
+  private pickRandomEnemy(): string {
+    const enemyFiles = [
+      '/enemies/blue_slime.png',
+      '/enemies/fire_golem.png',
+      '/enemies/green_slime.png',
+      '/enemies/old_golem.png',
+      '/enemies/red_slime.png',
+      '/enemies/water_golem.png',
+    ];
+    const index = Math.floor(Math.random() * enemyFiles.length);
+    return enemyFiles[index];
   }
 
 }

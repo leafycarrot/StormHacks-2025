@@ -27,14 +27,14 @@
     </div>
     
     <!-- Enemy Assignment -->
-    <div class="enemy-assignment" [style.left.px]="enemyX()">
-      <div class="assignment-date">{{ currentAssignment().date }}</div>
+  <div class="enemy-assignment" [style.left.px]="enemyX()">
+      <div class="assignment-date floating-date">{{ currentAssignment().date }}</div>
       <div class="assignment-ghost">
-        <img src="assets/images/monster_1.gif" 
+        <img [src]="enemyImage()"
              alt="Assignment Monster" 
-             class="ghost-gif"
-             onload="console.log('Monster GIF loaded successfully')"
-             onerror="console.error('Failed to load monster_1.gif'); this.style.border='2px solid red';">
+             class="assignment-monster"
+             (load)="onEnemyLoad()"
+             (error)="onEnemyError()">
       </div>
       </div>
 </div>
@@ -136,29 +136,21 @@ app-root {
 }
 
 /* Road */
-.road {
-  position: absolute;
-  bottom: 20%;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: #333;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
+.road { display: none; }
 
 .road::after { content: none; }
 
 /* Player Character */
 .player-character {
   position: absolute;
-  bottom: 20%;
+  bottom: -49%;
   left: 50px;
   z-index: 5;
 }
 
 .hp-bar {
   position: absolute;
-  bottom: 100%; /* place directly above character image */
+  bottom: 80%; /* place directly above character image */
   left: 50%;
   transform: translate(-50%, -6px);
   width: 120px;
@@ -199,7 +191,7 @@ app-root {
 /* Enemy Assignment */
 .enemy-assignment {
   position: absolute;
-  bottom: 20%;
+  bottom: -280px; /* roughly 200px down from previous baseline using px */
   right: 200px;
   z-index: 5;
   transition: left 0.5s ease;
@@ -219,14 +211,16 @@ app-root {
   display: inline-block;
 }
 
+.floating-date { position: absolute; bottom: 70%; left: 50%; transform: translate(-50%, -8px); }
+
 .assignment-ghost {
   text-align: center;
   animation: bounce 1s ease-in-out infinite;
 }
 
-.ghost-gif {
-  width: 60px;
-  height: 60px;
+.assignment-monster {
+  width: 400px;
+  height: 400px;
   object-fit: contain;
   display: block;
   margin: 0 auto;
