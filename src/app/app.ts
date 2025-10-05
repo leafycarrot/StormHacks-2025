@@ -25,6 +25,22 @@ export class App implements OnInit, OnDestroy {
   protected readonly enemyX = signal(100);
   protected readonly displayMessage = signal('Welcome to the Student Productivity Game! Complete assignments before they reach you!');
   protected readonly enemyImage = signal<string>('/enemies/blue_slime.png');
+  protected readonly showPanel = signal(false);
+  protected readonly adminButtonSrc = signal<string>('/backgrounds/@admin_button.png');
+
+  // Teacher UI state
+  protected readonly students = signal<Array<{ username: string; assignments: { name: string; date: string; dueISO: string; completed: boolean; percentage: number }[] }>>([
+    { username: 'Alex',  assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: false, percentage: 78 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: true, percentage: 92 } ] },
+    { username: 'Blake', assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: true,  percentage: 85 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: false, percentage: 61 } ] },
+    { username: 'Casey', assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: true,  percentage: 96 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: true,  percentage: 88 } ] },
+    { username: 'Devon', assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: false, percentage: 55 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: false, percentage: 40 } ] },
+    { username: 'Emery', assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: true,  percentage: 90 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: false, percentage: 70 } ] },
+    { username: 'Finley',assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: true,  percentage: 82 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: true,  percentage: 79 } ] },
+    { username: 'Gray',  assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: false, percentage: 47 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: true,  percentage: 68 } ] },
+    { username: 'Harper',assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: true,  percentage: 93 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: false, percentage: 62 } ] },
+  ]);
+  protected newAssignmentName = '';
+  protected newAssignmentDate = '';
   
   // Game data
   protected readonly currentAssignment = signal<Assignment>({
@@ -138,6 +154,49 @@ export class App implements OnInit, OnDestroy {
 
   protected onEnemyError(): void {
     // Intentionally empty; could set a fallback image here if needed
+  }
+
+  // UI panel controls
+  protected openPanel(): void { this.showPanel.set(true); }
+  protected closePanel(): void { this.showPanel.set(false); }
+  protected onAdminImgError(): void {
+    // Fallback to non-@ filename if provided asset doesn't exist
+    this.adminButtonSrc.set('/backgrounds/admin_button.png');
+  }
+
+  protected addAssignment(): void {
+    const name = this.newAssignmentName?.trim();
+    if (!name) { return; }
+    const dateStr = this.newAssignmentDate || new Date().toISOString().slice(0,10);
+    const date = new Date(dateStr);
+    const dateLabel = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    this.students.update(list => list.map(s => ({
+      ...s,
+      assignments: [
+        ...s.assignments,
+        { name, date: dateLabel, dueISO: date.toISOString(), completed: false, percentage: 0 }
+      ]
+    })));
+    this.newAssignmentName = '';
+    this.newAssignmentDate = '';
+  }
+
+  protected deleteAssignmentForAll(nameToDelete: string): void {
+    const key = (nameToDelete || '').trim().toLowerCase();
+    if (!key) { return; }
+    this.students.update(list => list.map(s => ({
+      ...s,
+      assignments: s.assignments.filter(a => a.name.toLowerCase() !== key)
+    })));
+  }
+
+  // Helper used in template to avoid complex/new expressions there
+  protected isOverdue(dueISO: string): boolean {
+    try {
+      return new Date(dueISO).getTime() < Date.now();
+    } catch {
+      return false;
+    }
   }
 
   private pickRandomEnemy(): string {
