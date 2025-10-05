@@ -1,5 +1,4 @@
 import { Component, signal, OnInit, OnDestroy } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
@@ -12,7 +11,7 @@ interface Assignment {
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, FormsModule, CommonModule],
+  imports: [FormsModule, CommonModule],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
@@ -30,14 +29,14 @@ export class App implements OnInit, OnDestroy {
 
   // Teacher UI state
   protected readonly students = signal<Array<{ username: string; assignments: { name: string; date: string; dueISO: string; completed: boolean; percentage: number }[] }>>([
-    { username: 'Alex',  assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: false, percentage: 78 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: true, percentage: 92 } ] },
-    { username: 'Blake', assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: true,  percentage: 85 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: false, percentage: 61 } ] },
-    { username: 'Casey', assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: true,  percentage: 96 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: true,  percentage: 88 } ] },
-    { username: 'Devon', assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: false, percentage: 55 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: false, percentage: 40 } ] },
-    { username: 'Emery', assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: true,  percentage: 90 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: false, percentage: 70 } ] },
-    { username: 'Finley',assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: true,  percentage: 82 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: true,  percentage: 79 } ] },
-    { username: 'Gray',  assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: false, percentage: 47 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: true,  percentage: 68 } ] },
-    { username: 'Harper',assignments: [ { name: 'Homework 1', date: 'Oct 8',  dueISO: new Date().toISOString(), completed: true,  percentage: 93 }, { name: 'Homework 2', date: 'Oct 12', dueISO: new Date().toISOString(), completed: false, percentage: 62 } ] },
+    { username: 'Alex',  assignments: [] },
+    { username: 'Blake', assignments: [] },
+    { username: 'Casey', assignments: [] },
+    { username: 'Devon', assignments: [] },
+    { username: 'Emery', assignments: [] },
+    { username: 'Finley',assignments: [] },
+    { username: 'Gray',  assignments: [] },
+    { username: 'Harper', assignments: [] },
   ]);
   protected newAssignmentName = '';
   protected newAssignmentDate = '';
@@ -164,11 +163,120 @@ export class App implements OnInit, OnDestroy {
     this.adminButtonSrc.set('/backgrounds/admin_button.png');
   }
 
+  // --- Admin modal / password-protected UI state ---
+  protected adminShowModal = false;
+  protected adminPassword: string | null = null; // null = not set yet
+  protected adminPasswordInput = '';
+  protected adminPasswordError = '';
+  protected adminIsSettingPassword = false;
+  protected adminPasswordVerified = false;
+  protected adminShowChangePassword = false;
+  protected adminNewPasswordInput = '';
+  protected adminConfirmNewPasswordInput = '';
+  protected adminCurrentPasswordInput = '';
+  protected adminChangePasswordError = '';
+
+  protected openAdminModal() {
+    this.adminPasswordError = '';
+    this.adminShowChangePassword = false;
+    this.adminNewPasswordInput = '';
+    this.adminConfirmNewPasswordInput = '';
+    this.adminChangePasswordError = '';
+    if (this.adminPassword === null) {
+      // first time: prompt to set password
+      this.adminIsSettingPassword = true;
+      this.adminPasswordVerified = false;
+      this.adminShowModal = true;
+    } else {
+      // subsequent times: ask for password
+      this.adminIsSettingPassword = false;
+      this.adminPasswordVerified = false;
+      this.adminShowModal = true;
+    }
+  }
+
+  protected submitAdminPassword() {
+    if (this.adminIsSettingPassword) {
+      if (!this.adminPasswordInput.trim()) {
+        this.adminPasswordError = 'Password cannot be empty.';
+        return;
+      }
+      this.adminPassword = this.adminPasswordInput;
+      this.adminPasswordInput = '';
+      this.adminIsSettingPassword = false;
+      this.adminPasswordVerified = true;
+      this.adminShowModal = true;
+      this.adminPasswordError = '';
+    } else {
+      if (this.adminPasswordInput === this.adminPassword) {
+        this.adminPasswordVerified = true;
+        this.adminPasswordInput = '';
+        this.adminPasswordError = '';
+      } else {
+        this.adminPasswordError = 'Incorrect password.';
+      }
+    }
+  }
+
+  protected closeAdminModal() {
+    this.adminShowModal = false;
+    this.adminPasswordVerified = false;
+    this.adminPasswordInput = '';
+    this.adminPasswordError = '';
+    this.adminShowChangePassword = false;
+    this.adminNewPasswordInput = '';
+    this.adminConfirmNewPasswordInput = '';
+    this.adminChangePasswordError = '';
+  }
+
+  protected startAdminChangePassword() {
+    this.adminShowChangePassword = true;
+    this.adminNewPasswordInput = '';
+    this.adminConfirmNewPasswordInput = '';
+    this.adminCurrentPasswordInput = '';
+    this.adminChangePasswordError = '';
+  }
+
+  protected submitAdminChangePassword() {
+    // require current password and new/confirm fields
+    if (!this.adminCurrentPasswordInput.trim() || !this.adminNewPasswordInput.trim() || !this.adminConfirmNewPasswordInput.trim()) {
+      this.adminChangePasswordError = 'All fields are required.';
+      return;
+    }
+    if (this.adminCurrentPasswordInput !== (this.adminPassword ?? '')) {
+      this.adminChangePasswordError = 'Current password is incorrect.';
+      return;
+    }
+    if (this.adminNewPasswordInput !== this.adminConfirmNewPasswordInput) {
+      this.adminChangePasswordError = 'Passwords do not match.';
+      return;
+    }
+    if (this.adminNewPasswordInput === this.adminPassword) {
+      this.adminChangePasswordError = 'New password must be different.';
+      return;
+    }
+    // Apply change
+    this.adminPassword = this.adminNewPasswordInput;
+    this.adminShowChangePassword = false;
+    this.adminNewPasswordInput = '';
+    this.adminConfirmNewPasswordInput = '';
+    this.adminCurrentPasswordInput = '';
+    this.adminChangePasswordError = '';
+    this.adminPasswordVerified = false;
+    this.closeAdminModal();
+    // Re-open to require entry of new password
+    setTimeout(() => {
+      this.openAdminModal();
+    }, 100);
+  }
+
   protected addAssignment(): void {
     const name = this.newAssignmentName?.trim();
     if (!name) { return; }
     const dateStr = this.newAssignmentDate || new Date().toISOString().slice(0,10);
-    const date = new Date(dateStr);
+    // Treat date-only inputs (YYYY-MM-DD) as local end-of-day to avoid timezone issues
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(y, (m || 1) - 1, d || 1, 23, 59, 59, 999);
     const dateLabel = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     this.students.update(list => list.map(s => ({
       ...s,
@@ -193,7 +301,8 @@ export class App implements OnInit, OnDestroy {
   // Helper used in template to avoid complex/new expressions there
   protected isOverdue(dueISO: string): boolean {
     try {
-      return new Date(dueISO).getTime() < Date.now();
+      const due = new Date(dueISO).getTime();
+      return due < Date.now();
     } catch {
       return false;
     }

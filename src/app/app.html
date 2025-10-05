@@ -6,8 +6,9 @@
     <div class="site-title">
       <img src="/backgrounds/title.png" alt="Game Title">
     </div>
-    <button class="top-right-button" (click)="openPanel()">
-      <img [src]="adminButtonSrc()" alt="Open Panel" class="top-right-icon x30" (error)="onAdminImgError()">
+    <!-- Admin Mode UI button: fixed to top-right. Change size in the .top-right-icon CSS rule below. -->
+    <button class="top-right-button" (click)="openAdminModal()" style="position:fixed; top:12px; right:12px; z-index:2002;">
+      <img [src]="adminButtonSrc()" alt="Open Admin" class="top-right-icon" (error)="onAdminImgError()">
     </button>
   </div>
 
@@ -51,48 +52,76 @@
       </div>
 </div>
 
-<!-- Center Modal Teacher UI -->
-<div class="overlay" *ngIf="showPanel()" (click)="closePanel()"></div>
-<div class="center-modal" *ngIf="showPanel()">
-  <div class="modal-header">
-    <h3>Teacher Dashboard</h3>
-    <button class="modal-close" (click)="closePanel()">×</button>
-  </div>
-  <div class="modal-body">
-    <form class="assign-form" (submit)="$event.preventDefault(); addAssignment()">
-      <input type="text" placeholder="Assignment name (also used for delete)" [(ngModel)]="newAssignmentName" name="assignName">
-      <input type="date" [(ngModel)]="newAssignmentDate" name="assignDate">
-      <button type="submit">Add Assignment</button>
-      <button type="button" class="danger" (click)="deleteAssignmentForAll(newAssignmentName)">Delete Assignment for Everyone</button>
-    </form>
+<!-- Admin Password Modal (first-time set password, later require it) -->
+<ng-container *ngIf="adminShowModal">
+  <!-- Floating admin window (not a blocking backdrop) -->
+  <div class="admin-window" (click)="$event.stopPropagation()">
+    <div class="admin-titlebar">
+      <div class="admin-title">Admin: Student Grades</div>
+      <button class="close-btn" (click)="closeAdminModal()">&times;</button>
+    </div>
+      <form (submit)="$event.preventDefault(); submitAdminPassword()" *ngIf="adminIsSettingPassword || (!adminIsSettingPassword && !adminPasswordVerified)">
+        <div style="margin-bottom:1rem;">
+          <label *ngIf="adminIsSettingPassword">Set a password to access Admin Grades:</label>
+          <label *ngIf="!adminIsSettingPassword">Enter password to access Admin Grades:</label>
+        </div>
+        <input type="password" [(ngModel)]="adminPasswordInput" name="adminPasswordInput" placeholder="Password" style="padding:0.25rem 0.5rem; border:1px solid #ccc; border-radius:4px; width:100%; margin-bottom:0.5rem;" autofocus />
+        <div *ngIf="adminPasswordError" style="color:#e74c3c; margin-bottom:0.5rem;">{{ adminPasswordError }}</div>
+        <button type="submit" style="padding:0.25rem 0.75rem; border-radius:4px; background:var(--bright-blue); color:white; border:none; cursor:pointer; width:100%">Submit</button>
+      </form>
+      <ng-container *ngIf="adminPasswordVerified">
+        <button (click)="startAdminChangePassword()" style="margin-bottom:1rem; float:right; background:var(--bright-blue); color:white; border:none; border-radius:4px; padding:0.25rem 0.75rem; cursor:pointer;">Change Password</button>
+        <form *ngIf="adminShowChangePassword" (submit)="$event.preventDefault(); submitAdminChangePassword()" style="margin-bottom:1rem;">
+          <div style="margin-bottom:0.5rem; font-weight:500;">Change Password</div>
+          <input type="password" [(ngModel)]="adminNewPasswordInput" name="adminNewPasswordInput" placeholder="New password" style="padding:0.25rem 0.5rem; border:1px solid #ccc; border-radius:4px; width:100%; margin-bottom:0.5rem;" autofocus />
+          <input type="password" [(ngModel)]="adminConfirmNewPasswordInput" name="adminConfirmNewPasswordInput" placeholder="Confirm new password" style="padding:0.25rem 0.5rem; border:1px solid #ccc; border-radius:4px; width:100%; margin-bottom:0.5rem;" />
+          <div *ngIf="adminChangePasswordError" style="color:#e74c3c; margin-bottom:0.5rem;">{{ adminChangePasswordError }}</div>
+          <button type="submit" style="padding:0.25rem 0.75rem; border-radius:4px; background:var(--bright-blue); color:white; border:none; cursor:pointer; width:100%">Update Password</button>
+        </form>
+        <!-- Admin content area: teacher dashboard -->
+        <div style="padding-top:1rem;">
+          <div class="modal-header">
+            <h3>Teacher Dashboard</h3>
+          </div>
+          <div class="modal-body">
+            <form class="assign-form" (submit)="$event.preventDefault(); addAssignment()">
+              <input type="text" placeholder="Assignment name" [(ngModel)]="newAssignmentName" name="newAssignmentName" />
+              <input type="date" [(ngModel)]="newAssignmentDate" name="newAssignmentDate" />
+              <button type="submit">Add</button>
+            </form>
 
-    <table class="teacher-table">
-      <thead>
-        <tr>
-          <th>Student</th>
-          <th>Assignment / Test</th>
-          <th>Due Date</th>
-          <th>%</th>
-          <th>Completed</th>
-        </tr>
-      </thead>
-      <tbody>
-        <ng-container *ngFor="let s of students()">
-          <tr *ngFor="let a of s.assignments; let i = index">
-            <td>{{ i === 0 ? s.username : '' }}</td>
-            <td>{{ a.name }}</td>
-            <td>
-              {{ a.date }}
-              <span *ngIf="isOverdue(a.dueISO)" class="overdue">(OVERDUE)</span>
-            </td>
-            <td><input type="number" [(ngModel)]="a.percentage" min="0" max="100" name="percent_{{s.username}}_{{i}}" style="width:64px"></td>
-            <td><input type="checkbox" [(ngModel)]="a.completed" name="completed_{{s.username}}_{{i}}"></td>
-          </tr>
-        </ng-container>
-      </tbody>
-    </table>
-      </div>
-</div>
+            <table class="teacher-table">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Assignment</th>
+                  <th>Due</th>
+                  <th>%</th>
+                  <th>Completed</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <ng-container *ngFor="let s of students()">
+                  <tr *ngFor="let a of s.assignments; let i = index">
+                    <td>{{ i === 0 ? s.username : '' }}</td>
+                    <td>{{ a.name }}</td>
+                    <td>
+                      {{ a.date }}
+                      <span *ngIf="isOverdue(a.dueISO)" class="overdue">(OVERDUE)</span>
+                    </td>
+                    <td><input type="number" [(ngModel)]="a.percentage" min="0" max="100" name="percent_{{s.username}}_{{i}}" style="width:64px"></td>
+                    <td><input type="checkbox" [(ngModel)]="a.completed" name="completed_{{s.username}}_{{i}}"></td>
+                    <td><button type="button" (click)="deleteAssignmentForAll(a.name)">Delete</button></td>
+                  </tr>
+                </ng-container>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </ng-container>
+  </div>
+</ng-container>
 
 
 <style>
@@ -124,7 +153,7 @@ app-root {
 /* Game Container */
 .game-container {
   width: 100%;
-  min-height: 180vh; /* reduce extra space below */
+  min-height: 180vh; /* extend page to allow scroll below background */
   background: transparent;
   position: relative;
   overflow: visible;
@@ -147,16 +176,15 @@ app-root {
   z-index: -1;
 }
 
-/* Second background placed directly below the first one */
 .game-container::after {
   content: '';
   position: absolute;
-  top: calc(100vh - 8px); /* continue right after the top background */
+  top: calc(100vh - 8px);           /* bleed over edges to hide 1px gaps */
   left: -8px;
   width: calc(100% + 16px);
   height: 100vh;
   background: url('/backgrounds/stormhack_background_low.png') no-repeat center top;
-  background-size: cover;
+  background-size: cover; /* keep background covering only the game viewport */
   z-index: -1;
 }
 
@@ -198,8 +226,8 @@ app-root {
 }
 
 .top-right-icon {
-  width: 44px;
-  height: 44px;
+  width: 64x; /* change this value to increase/decrease icon size */
+  height: 64px;
   image-rendering: pixelated;
 }
 
@@ -239,7 +267,7 @@ app-root {
 /* Player Character */
 .player-character {
   position: absolute;
-  bottom: -66%;
+  bottom: -90%;
   left: 70px;
   z-index: 5;
 }
@@ -376,6 +404,33 @@ app-root {
 .assign-form { display: flex; gap: 8px; margin-bottom: 12px; }
 .assign-form input[type="text"], .assign-form input[type="date"] { padding: 8px; border: 1px solid #ddd; border-radius: 6px; }
 .assign-form button { padding: 8px 12px; }
+
+/* Floating admin window (non-blocking) */
+.admin-window {
+  position: fixed;
+  right: 24px;
+  top: 72px;
+  width: min(92vw, 980px);
+  max-height: 80vh;
+  background: #fff;
+  color: #111;
+  border-radius: 12px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+  z-index: 2001;
+  overflow: auto;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+.admin-titlebar {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+  background: linear-gradient(180deg,#fafafa,#fff);
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+.admin-title { font-weight:700; font-size:18px; }
 
 .teacher-table { width: 100%; border-collapse: collapse; }
 .teacher-table th, .teacher-table td { border: 1px solid #e5e5e5; padding: 8px; text-align: left; }
