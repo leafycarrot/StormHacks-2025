@@ -3,6 +3,9 @@
   <!-- Game Header -->
   <div class="game-header">
     <div class="streak-counter">Streak: {{ streak() }}</div>
+    <div class="site-title">
+      <img src="/backgrounds/title.png" alt="Game Title">
+    </div>
     <button class="top-right-button" (click)="openPanel()">
       <img [src]="adminButtonSrc()" alt="Open Panel" class="top-right-icon x30" (error)="onAdminImgError()">
     </button>
@@ -121,7 +124,7 @@ app-root {
 /* Game Container */
 .game-container {
   width: 100%;
-  min-height: 160vh; /* extend page to allow scroll below background */
+  min-height: 180vh; /* reduce extra space below */
   background: transparent;
   position: relative;
   overflow: visible;
@@ -144,6 +147,19 @@ app-root {
   z-index: -1;
 }
 
+/* Second background placed directly below the first one */
+.game-container::after {
+  content: '';
+  position: absolute;
+  top: calc(100vh - 8px); /* continue right after the top background */
+  left: -8px;
+  width: calc(100% + 16px);
+  height: 100vh;
+  background: url('/backgrounds/stormhack_background_low.png') no-repeat center top;
+  background-size: cover;
+  z-index: -1;
+}
+
 /* Game Header */
 .game-header {
   position: absolute;
@@ -155,6 +171,20 @@ app-root {
   padding: 0 20px;
   z-index: 10;
   align-items: flex-start;
+}
+
+.site-title {
+  position: absolute;
+  top: -6px; /* nudge up if needed */
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.site-title img {
+  width: min(80vw, 1100px);
+  height: auto;
+  image-rendering: pixelated;
 }
 
 .top-right-button {
@@ -209,8 +239,8 @@ app-root {
 /* Player Character */
 .player-character {
   position: absolute;
-  bottom: -49%;
-  left: 50px;
+  bottom: -66%;
+  left: 70px;
   z-index: 5;
 }
 
@@ -248,8 +278,8 @@ app-root {
 }
 
 .character-image {
-  width: 400px;
-  height: 400px;
+  width: 600px;
+  height: 600px;
   object-fit: contain;
   image-rendering: pixelated;
 }
@@ -257,7 +287,7 @@ app-root {
 /* Enemy Assignment */
 .enemy-assignment {
   position: absolute;
-  bottom: -280px; /* roughly 200px down from previous baseline using px */
+  bottom: -370px; /* roughly 200px down from previous baseline using px */
   right: 200px;
   z-index: 5;
   transition: left 0.5s ease;
@@ -285,8 +315,8 @@ app-root {
 }
 
 .assignment-monster {
-  width: 400px;
-  height: 400px;
+  width: 600px;
+  height: 600px;
   object-fit: contain;
   display: block;
   margin: 0 auto;
@@ -304,7 +334,7 @@ app-root {
 .display-text {
   position: relative;
   margin-top: 100vh; /* push text below the background image area */
-  min-height: 30vh;
+  min-height: 0;
   background: rgba(0, 0, 0, 0.85);
   color: white;
     display: flex;
@@ -313,6 +343,7 @@ app-root {
   font-size: 18px;
   text-align: center;
   padding: 24px;
+  margin-bottom: 0;
 }
 
 /* Slide-over panel styles */

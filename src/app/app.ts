@@ -141,7 +141,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   private resetGame() {
-    this.hp.set(100);
+    this.hp.set(3);
     this.streak.set(0);
     this.enemyX.set(200);
     this.createNewAssignment();
