@@ -1,5 +1,8 @@
 <!-- Student Productivity Game -->
 <div class="game-container">
+  <!-- Fixed Notification Banner (restored with background) -->
+  <div *ngIf="displayMessage()" class="notification-banner">{{ displayMessage() }}</div>
+
   <!-- Game Header -->
   <div class="game-header">
     <div class="streak-counter">Streak: {{ streak() }}</div>
@@ -33,23 +36,35 @@
       </div>
     </div>
     
-    <!-- Enemy Assignment -->
-  <div class="enemy-assignment" [style.left.px]="enemyX()">
-      <div class="assignment-date floating-date">{{ currentAssignment().date }}</div>
-      <div class="assignment-ghost">
-        <img [src]="enemyImage()"
-             alt="Assignment Monster" 
-             class="assignment-monster"
-             (load)="onEnemyLoad()"
-             (error)="onEnemyError()">
+    <!-- Enemy Assignments (multiple monsters) -->
+    <ng-container *ngFor="let m of monsters()">
+      <div class="enemy-assignment" [style.left.px]="m.x">
+        <div class="assignment-date floating-date">{{ m.dueLabel }}</div>
+        <div class="assignment-ghost tooltip">
+          <img [src]="m.imageSrc"
+               [alt]="m.name"
+               class="assignment-monster"
+               (load)="onEnemyLoad()"
+               (error)="onEnemyError()">
+          <span class="tooltiptext">{{ m.name }}</span>
+        </div>
       </div>
-      </div>
-</div>
+    </ng-container>
+  </div>
 
-  <!-- Display Text Area -->
+  <!-- Bottom Black Box: Monster timers/info -->
   <div class="display-text">
-    <p>{{ displayMessage() }}</p>
+    <div class="monster-timers" *ngIf="monsters().length; else noMonsters">
+      <div class="monster-info-item" *ngFor="let m of monsters()">
+        <span class="monster-name">{{ m.name }}</span>
+        <span class="monster-eta">ETA: {{ getMonsterEtaLabel(m) }}</span>
+        <span class="monster-due">Due: {{ m.dueLabel }}</span>
       </div>
+    </div>
+    <ng-template #noMonsters>
+      <p></p>
+    </ng-template>
+  </div>
 </div>
 
 <!-- Admin Password Modal (first-time set password, later require it) -->
@@ -111,7 +126,7 @@
                       <span *ngIf="isOverdue(a.dueISO)" class="overdue">(OVERDUE)</span>
                     </td>
                     <td><input type="number" [(ngModel)]="a.percentage" min="0" max="100" name="percent_{{s.username}}_{{i}}" style="width:64px"></td>
-                    <td><input type="checkbox" [(ngModel)]="a.completed" name="completed_{{s.username}}_{{i}}"></td>
+                    <td><input type="checkbox" [(ngModel)]="a.completed" name="completed_{{s.username}}_{{i}}" (ngModelChange)="onToggleTaskCompletion(students().indexOf(s), i)"></td>
                     <td><button type="button" (click)="deleteAssignmentForAll(a.name)">Delete</button></td>
                   </tr>
                 </ng-container>
@@ -149,6 +164,29 @@ app-root {
   margin: 0;
   padding: 0;
 }
+
+/* Restored top banner */
+.notification-banner {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3000;
+  max-width: min(90vw, 900px);
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Monster timers in bottom black box */
+.monster-timers { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; width: 100%; }
+.monster-info-item { color: #fff; font-weight: 700; background: rgba(255,255,255,0.08); padding: 6px 10px; border-radius: 10px; box-shadow: 0 6px 16px rgba(0,0,0,0.25) inset; }
+.monster-info-item .monster-name { margin-right: 8px; }
+.monster-info-item .monster-eta { margin-right: 8px; opacity: 0.95; }
 
 /* Game Container */
 .game-container {
@@ -267,7 +305,7 @@ app-root {
 /* Player Character */
 .player-character {
   position: absolute;
-  bottom: -90%;
+  bottom: -66%;
   left: 70px;
   z-index: 5;
 }
@@ -316,7 +354,6 @@ app-root {
 .enemy-assignment {
   position: absolute;
   bottom: -370px; /* roughly 200px down from previous baseline using px */
-  right: 200px;
   z-index: 5;
   transition: left 0.5s ease;
 }
@@ -351,6 +388,31 @@ app-root {
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
+}
+
+/* Tooltip */
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+.tooltip .tooltiptext {
+  visibility: hidden;
+  min-width: 140px;
+  background-color: rgba(0,0,0,0.8);
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 6px 8px;
+  position: absolute;
+  z-index: 10;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 100%;
+  margin-bottom: 8px;
+  white-space: nowrap;
+}
+.tooltip:hover .tooltiptext {
+  visibility: visible;
 }
 
 @keyframes bounce {

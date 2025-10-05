@@ -9,6 +9,15 @@ interface Assignment {
   completed: boolean;
 }
 
+interface Monster {
+  id: number;
+  name: string;
+  x: number; // horizontal position in px (used for [style.left.px])
+  speed: number; // pixels per tick
+  imageSrc: string;
+  dueLabel: string; // short due date label to render above monster
+}
+
 @Component({
   selector: 'app-root',
   imports: [FormsModule, CommonModule],
@@ -23,9 +32,15 @@ export class App implements OnInit, OnDestroy {
   protected readonly playerX = signal(-70);
   protected readonly enemyX = signal(100);
   protected readonly displayMessage = signal('Welcome to the Student Productivity Game! Complete assignments before they reach you!');
-  protected readonly enemyImage = signal<string>('/enemies/blue_slime.png');
   protected readonly showPanel = signal(false);
   protected readonly adminButtonSrc = signal<string>('/backgrounds/@admin_button.png');
+  protected readonly gameLocked = signal(false); // true when player is dead until admin unlocks
+
+  // Multiple monsters tied to created assignments
+  protected readonly monsters = signal<Monster[]>([]);
+
+  // Keep a simple list of assignment names
+  protected readonly assignmentNames = signal<string[]>([]);
 
   // Teacher UI state
   protected readonly students = signal<Array<{ username: string; assignments: { name: string; date: string; dueISO: string; completed: boolean; percentage: number }[] }>>([
@@ -52,9 +67,9 @@ export class App implements OnInit, OnDestroy {
 
   private gameInterval?: number;
   private cloudInterval?: number;
+  private notificationTimeout?: number;
 
   ngOnInit() {
-    this.enemyImage.set(this.pickRandomEnemy());
     this.startGame();
   }
 
@@ -65,42 +80,113 @@ export class App implements OnInit, OnDestroy {
     if (this.cloudInterval) {
       clearInterval(this.cloudInterval);
     }
+    if (this.notificationTimeout) {
+      clearTimeout(this.notificationTimeout);
+    }
+  }
+
+  // If durationMs is provided, auto-hide after that many ms; if omitted, persist
+  private showNotification(message: string, durationMs?: number): void {
+    this.displayMessage.set(message);
+    if (this.notificationTimeout) {
+      clearTimeout(this.notificationTimeout);
+      this.notificationTimeout = undefined as unknown as number;
+    }
+    if (typeof durationMs === 'number' && isFinite(durationMs) && durationMs > 0) {
+      this.notificationTimeout = setTimeout(() => {
+        if (this.displayMessage() === message) {
+          this.displayMessage.set('');
+        }
+      }, durationMs) as unknown as number;
+    }
+  }
+
+  // Estimate time left (seconds) for a monster to reach collision threshold
+  protected getMonsterEtaSeconds(monster: Monster): number {
+    const COLLISION_DISTANCE_PX = 80;
+    const targetX = this.playerX() + COLLISION_DISTANCE_PX;
+    const distancePx = Math.max(0, monster.x - targetX);
+    const pixelsPerSecond = monster.speed * 10; // speed per 100ms tick
+    if (pixelsPerSecond <= 0) { return Infinity; }
+    return distancePx / pixelsPerSecond;
+  }
+
+  protected getMonsterEtaLabel(monster: Monster): string {
+    const sec = this.getMonsterEtaSeconds(monster);
+    if (!isFinite(sec)) { return '∞'; }
+    if (sec < 60) { return `${Math.ceil(sec)}s`; }
+    const mins = Math.floor(sec / 60);
+    const rem = Math.ceil(sec % 60);
+    return `${mins}m ${rem}s`;
   }
 
   private startGame() {
-    // Move enemy closer to player over time
+    // Move all monsters closer to player and detect collisions
     this.gameInterval = setInterval(() => {
-      const COLLISION_DISTANCE_PX = 80; // tweak to match sprite sizes
-      const currentX = this.enemyX();
-      const targetX = this.playerX() + COLLISION_DISTANCE_PX;
-      const step = 2;
-      const newX = currentX > targetX ? currentX - step : targetX;
-      this.enemyX.set(newX);
+      // Freeze when admin password is verified or game is locked (dead)
+      if (this.adminPasswordVerified || this.gameLocked()) { return; }
 
-      // Check if enemy hit player
-      if (newX <= targetX && !this.currentAssignment().completed) {
-        this.takeDamage(1);
-        this.displayMessage.set('Assignment hit! You lost 1 HP. Complete assignments to avoid damage!');
+      const COLLISION_DISTANCE_PX = 80;
+      const targetX = this.playerX() + COLLISION_DISTANCE_PX;
+
+      let didCollide = false;
+
+      this.monsters.update(list => {
+        const updated = list.map(m => {
+          const nextX = m.x > targetX ? Math.max(targetX, m.x - m.speed) : m.x;
+          return { ...m, x: nextX };
+        });
+
+        const [colliding, remaining] = updated.reduce<[Monster[], Monster[]]>((acc, m) => {
+          if (m.x <= targetX) { acc[0].push(m); } else { acc[1].push(m); }
+          return acc;
+        }, [[], []]);
+
+        if (colliding.length > 0) {
+          didCollide = true;
+          return remaining; // remove collided monsters from the field
+        }
+        return updated;
+      });
+
+      if (didCollide) {
+        // Effects on collision
+        this.streak.set(0);
+        const died = this.takeDamage(1);
+        if (!died) {
+          this.showNotification('A monster reached you! Streak reset and -1 HP.', 3000);
+        }
       }
-      
-      // Check if assignment is overdue
-      const now = new Date();
-      if (now > this.currentAssignment().dueDate && !this.currentAssignment().completed) {
-        this.takeDamage(10);
-        this.displayMessage.set('Assignment overdue! You lost 10 HP!');
-        this.completeAssignment();
-      }
-    }, 1000);
+    }, 100);
 
   }
 
-  private takeDamage(amount: number) {
+  // Returns true if this hit caused death
+  private takeDamage(amount: number): boolean {
     const newHp = Math.max(0, this.hp() - amount);
     this.hp.set(newHp);
     
     if (newHp <= 0) {
-      this.displayMessage.set('Game Over! Your character has died. What happens next is to be decided...');
-      this.resetGame();
+      // Lock the game until admin unlocks (persistent message)
+      this.showNotification('You have lost all your HP! contect your admin to get back on!');
+      this.gameLocked.set(true);
+      return true;
+    }
+    return false;
+  }
+
+  // Called when a task checkbox is toggled in admin UI
+  protected onToggleTaskCompletion(studentIndex: number, assignmentIndex: number): void {
+    const list = this.students();
+    const a = list[studentIndex]?.assignments[assignmentIndex];
+    if (!a) { return; }
+
+    // When marked complete => increment streak and remove matching monster(s)
+    if (a.completed) {
+      this.streak.update(s => s + 1);
+      const key = (a.name || '').trim().toLowerCase();
+      this.monsters.update(arr => arr.filter(m => (m.name || '').toLowerCase() !== key));
+      this.showNotification(`Completed: ${a.name}. Streak +1!`, 3000);
     }
   }
 
@@ -111,7 +197,7 @@ export class App implements OnInit, OnDestroy {
     }));
     
     this.streak.update(s => s + 1);
-    this.displayMessage.set('Assignment completed! Great job! Your streak increased.');
+    this.showNotification('Assignment completed! Great job! Your streak increased.', 3000);
     
     // Move enemy back
     this.enemyX.set(200);
@@ -135,14 +221,14 @@ export class App implements OnInit, OnDestroy {
     });
     
     this.enemyX.set(200);
-    this.enemyImage.set(this.pickRandomEnemy());
-    this.displayMessage.set(`New assignment: ${randomAssignment}. Complete it before the due date!`);
+    this.showNotification(`New assignment: ${randomAssignment}. Complete it before the due date!`, 3000);
   }
 
   private resetGame() {
     this.hp.set(3);
     this.streak.set(0);
     this.enemyX.set(200);
+    this.monsters.set([]);
     this.createNewAssignment();
   }
 
@@ -212,6 +298,15 @@ export class App implements OnInit, OnDestroy {
         this.adminPasswordVerified = true;
         this.adminPasswordInput = '';
         this.adminPasswordError = '';
+        // If the game is locked due to death, unlock and revive now
+        if (this.gameLocked()) {
+          this.hp.set(this.maxHp());
+          this.gameLocked.set(false);
+          this.showNotification('Revived by Admin. Get back to it!', 3000);
+          if (this.notificationTimeout) { clearTimeout(this.notificationTimeout); }
+          // Optionally close modal to resume
+          this.closeAdminModal();
+        }
       } else {
         this.adminPasswordError = 'Incorrect password.';
       }
@@ -287,6 +382,21 @@ export class App implements OnInit, OnDestroy {
     })));
     this.newAssignmentName = '';
     this.newAssignmentDate = '';
+
+    // Track assignment name in simple list
+    this.assignmentNames.update(arr => [...arr, name]);
+
+    // Spawn a monster for this assignment on the right side
+    const newMonster: Monster = {
+      id: Date.now() + Math.floor(Math.random() * 100000),
+      name,
+      x: 1325,
+      speed: 2,
+      imageSrc: this.pickEnemyForName(name),
+      dueLabel: dateLabel
+    };
+    this.monsters.update(list => [...list, newMonster]);
+    this.showNotification(`New assignment created: ${name}`, 3000);
   }
 
   protected deleteAssignmentForAll(nameToDelete: string): void {
@@ -308,17 +418,21 @@ export class App implements OnInit, OnDestroy {
     }
   }
 
-  private pickRandomEnemy(): string {
-    const enemyFiles = [
-      '/enemies/blue_slime.png',
-      '/enemies/fire_golem.png',
-      '/enemies/green_slime.png',
-      '/enemies/old_golem.png',
-      '/enemies/red_slime.png',
-      '/enemies/water_golem.png',
-    ];
-    const index = Math.floor(Math.random() * enemyFiles.length);
-    return enemyFiles[index];
+  private pickEnemyForName(name: string): string {
+    const lower = (name || '').toLowerCase();
+    if (lower.includes('quiz')) {
+      const golems = ['/enemies/water_golem.png', '/enemies/old_golem.png', '/enemies/fire_golem.png'];
+      return golems[Math.floor(Math.random() * golems.length)];
+    }
+    if (lower.includes('assignment')) {
+      const slimes = ['/enemies/red_slime.png', '/enemies/blue_slime.png', '/enemies/green_slime.png'];
+      return slimes[Math.floor(Math.random() * slimes.length)];
+    }
+    if (lower.includes('exam')) {
+      return '/enemies/pixil-layer-0.png';
+    }
+    // Default to a slime if neither keyword present
+    return '/enemies/blue_slime.png';
   }
 
 }
