@@ -1,1 +1,29 @@
-/* You can add global styles to this file, and also import other style files */
+/* Global font: Minecraftia everywhere */
+html {
+  font-family: 'Minecraftia', 'Courier New', monospace !important;
+  /* Reduce global base size slightly */
+  font-size: 0.95em;
+}
+
+body,
+app-root,
+*,
+*::before,
+*::after {
+  font-family: inherit !important;
+}
+
+/* Ensure form controls inherit the font as well */
+input,
+select,
+textarea,
+button {
+  font-family: inherit !important;
+}
+
+/* Make key UI text one step smaller */
+.streak-counter { font-size: 14px !important; }
+.hp-text { font-size: 9px !important; }
+.character-body { font-size: 27px !important; }
+.assignment-date { font-size: 11px !important; }
+.display-text { font-size: 16px !important; }
